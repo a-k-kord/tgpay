@@ -68,8 +68,8 @@ export default function Home() {
                             key={category}
                             onClick={() => setSelectedCategory(category)}
                             className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap btn-scale ${selectedCategory === category
-                                    ? 'bg-telegram-button text-telegram-button-text'
-                                    : 'bg-telegram-secondary-bg text-telegram-text hover:bg-telegram-section-separator'
+                                ? 'bg-telegram-button text-telegram-button-text'
+                                : 'bg-telegram-secondary-bg text-telegram-text hover:bg-telegram-section-separator'
                                 }`}
                         >
                             {category}
@@ -187,7 +187,7 @@ export default function Home() {
     return (
         <div className="min-h-screen bg-telegram-bg">
             {/* Main Content */}
-            <main className="pb-20">
+            <main className="pb-24">
                 <div className="max-w-4xl mx-auto p-4">
                     {activeTab === 'shop' && renderShopTab()}
                     {activeTab === 'history' && renderHistoryTab()}
@@ -196,7 +196,7 @@ export default function Home() {
             </main>
 
             {/* Bottom Navigation */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-telegram-secondary-bg border-t border-telegram-section-separator telegram-safe-area">
+            <nav className="fixed bottom-0 left-0 right-0 bg-telegram-secondary-bg border-t border-telegram-section-separator telegram-safe-area backdrop-blur-md bg-opacity-95 z-50">
                 <div className="flex">
                     {[
                         { id: 'shop', label: 'Shop', icon: ShoppingBag },
@@ -207,8 +207,8 @@ export default function Home() {
                             key={id}
                             onClick={() => handleTabChange(id as TabType)}
                             className={`flex-1 flex flex-col items-center gap-1 py-3 btn-scale ${activeTab === id
-                                    ? 'text-telegram-button'
-                                    : 'text-telegram-hint hover:text-telegram-text'
+                                ? 'text-telegram-button'
+                                : 'text-telegram-hint hover:text-telegram-text'
                                 }`}
                         >
                             <Icon size={20} />
