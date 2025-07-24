@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PaymentData } from '@/features/payment/types';
 
 // In-memory store (use database in production)
 declare global {
-  var paymentStore: Map<string, any>;
+  var paymentStore: Map<string, PaymentData>;
 }
 
 if (!global.paymentStore) {
@@ -11,13 +12,12 @@ if (!global.paymentStore) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { paymentId: string } }
+  { params }: { params: Promise<{ paymentId: string }> }
 ) {
   try {
-    const { paymentId } = params;
-    
+    const { paymentId } = await params;
     const payment = global.paymentStore.get(paymentId);
-    
+
     if (!payment) {
       return NextResponse.json(
         { error: 'Payment not found' },
@@ -34,3 +34,9 @@ export async function GET(
     );
   }
 }
+
+// Disable static generation for this route
+export const dynamic = 'force-dynamic';
+
+// Configure runtime
+export const runtime = 'edge';

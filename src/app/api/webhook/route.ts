@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Bot, webhookCallback } from 'grammy';
+import { PaymentData } from '@/features/payment/types';
 
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -11,7 +12,7 @@ const bot = new Bot(botToken);
 
 // In-memory store (use database in production)
 declare global {
-  var paymentStore: Map<string, any>;
+  var paymentStore: Map<string, PaymentData>;
 }
 
 if (!global.paymentStore) {
@@ -23,7 +24,7 @@ bot.on('pre_checkout_query', async (ctx) => {
   try {
     // Parse the payload to get payment information
     const payload = JSON.parse(ctx.preCheckoutQuery.invoice_payload);
-    const { paymentId, productId, userId } = payload;
+    const { paymentId, userId } = payload;
 
     // Validate the payment
     const payment = global.paymentStore.get(paymentId);

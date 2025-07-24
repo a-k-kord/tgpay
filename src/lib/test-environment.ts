@@ -9,10 +9,10 @@ export const isTestEnvironment = process.env.NODE_ENV === 'development' || proce
 export const getTelegramApiUrl = (token: string) => {
     if (isTestEnvironment) {
         // Use test environment API
-        return `https://api.telegram.org/bot${token}/test/`;
+        return `https://api.telegram.org/bot${token}/test`;
     }
     // Use production API
-    return `https://api.telegram.org/bot${token}/`;
+    return `https://api.telegram.org/bot${token}`;
 };
 
 /**
@@ -22,7 +22,7 @@ export const createBot = (token: string): Bot => {
     if (isTestEnvironment) {
         return new Bot(token, {
             client: {
-                apiRoot: getTelegramApiUrl(token).slice(0, -1), // Remove trailing slash
+                apiRoot: getTelegramApiUrl(token),
             },
         });
     }
