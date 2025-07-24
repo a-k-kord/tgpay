@@ -57,17 +57,53 @@ export async function POST(request: NextRequest) {
 
         global.paymentStore.set(paymentId, payment);
 
-        // Create invoice link
-        const botName = process.env.TELEGRAM_BOT_NAME;
-        if (!botName) {
+        // Create proper Telegram Stars invoice
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+        if (!botToken) {
             return NextResponse.json(
-                { error: 'TELEGRAM_BOT_NAME environment variable is not set' },
+                { error: 'TELEGRAM_BOT_TOKEN environment variable is not set' },
                 { status: 500 }
             );
         }
-        const invoiceLink = `https://t.me/${botName}?start=pay_${paymentId}`;
 
-        return NextResponse.json({ invoiceLink, paymentId });
+        // Create invoice using Telegram Bot API
+        const invoicePayload = {
+            title: product.name,
+            description: product.description,
+            payload: JSON.stringify({ paymentId, userId, productId }),
+            currency: 'XTR', // Telegram Stars currency
+            prices: [{ label: product.name, amount: amount }]
+        };
+
+        try {
+            const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(invoicePayload)
+            });
+
+            const telegramData = await telegramResponse.json();
+
+            if (!telegramData.ok) {
+                console.error('Telegram API error:', telegramData);
+                return NextResponse.json(
+                    { error: 'Failed to create invoice with Telegram' },
+                    { status: 500 }
+                );
+            }
+
+            const invoiceLink = telegramData.result;
+            return NextResponse.json({ invoiceLink, paymentId });
+
+        } catch (telegramError) {
+            console.error('Telegram API request failed:', telegramError);
+            return NextResponse.json(
+                { error: 'Failed to communicate with Telegram API' },
+                { status: 500 }
+            );
+        }
     } catch (error) {
         console.error('Create invoice error:', error);
         return NextResponse.json(
