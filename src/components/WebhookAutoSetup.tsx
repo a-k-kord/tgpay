@@ -15,8 +15,8 @@ export function WebhookAutoSetup() {
             if (!hasRunSetup) {
                 console.log('🔧 Running automatic webhook setup...');
 
-                // Call the auto-setup endpoint
-                fetch('/api/auto-setup')
+                // Call the smart auto-setup endpoint that detects URL automatically
+                fetch('/api/auto-setup-smart')
                     .then(response => response.json())
                     .then(data => {
                         if (data.success) {

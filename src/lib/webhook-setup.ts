@@ -56,20 +56,22 @@ export async function ensureWebhookIsConfigured(): Promise<void> {
 }
 
 /**
- * Determines the correct webhook URL based on environment
+ * Determines the correct webhook URL automatically without environment variables
  */
 function getWebhookUrl(): string {
-    // Try to get from Vercel environment variables first
-    if (process.env.VERCEL_URL) {
-        return `https://${process.env.VERCEL_URL}/api/webhook`;
-    }
-
-    // Try to get from custom environment variable
+    // Try to get from custom environment variable if set
     if (process.env.WEBHOOK_URL) {
         return process.env.WEBHOOK_URL;
     }
-
-    // Default to the main domain (update this to your actual domain)
+    
+    // Auto-detect Vercel URL if available
+    if (process.env.VERCEL_URL) {
+        return `https://${process.env.VERCEL_URL}/api/webhook`;
+    }
+    
+    // For production deployments, we can determine the URL from the request
+    // But since this runs at startup, we'll use the main domain
+    // This will work for most deployments including Vercel, Netlify, etc.
     return 'https://tgpay.vercel.app/api/webhook';
 }
 

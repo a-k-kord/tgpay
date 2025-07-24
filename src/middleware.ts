@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 // Track if webhook setup has been attempted in this deployment
 let webhookSetupAttempted = false;
 
-export async function middleware(_request: NextRequest) {
+export async function middleware(request: NextRequest) {
     // Only run webhook setup once per deployment and only in production
     if (!webhookSetupAttempted &&
         process.env.NODE_ENV === 'production' &&
@@ -14,15 +14,22 @@ export async function middleware(_request: NextRequest) {
         // Run webhook setup asynchronously without blocking the request
         setTimeout(async () => {
             try {
-                console.log('🚀 Middleware: Auto-configuring webhook...');
+                console.log('🚀 Middleware: Auto-configuring webhook with smart detection...');
 
-                // Import and run webhook setup
-                const { ensureWebhookIsConfigured } = await import('./lib/webhook-setup');
-                await ensureWebhookIsConfigured();
+                // Call the smart auto-setup endpoint
+                const url = new URL(request.url);
+                const smartSetupUrl = `${url.protocol}//${url.host}/api/auto-setup-smart`;
 
-                console.log('✅ Middleware: Webhook auto-configuration completed');
+                const response = await fetch(smartSetupUrl);
+                const result = await response.json();
+
+                if (result.success) {
+                    console.log('✅ Middleware: Smart webhook auto-configuration completed');
+                } else {
+                    console.warn('⚠️ Middleware: Smart webhook setup failed:', result.error);
+                }
             } catch (error) {
-                console.error('❌ Middleware: Webhook setup error:', error);
+                console.error('❌ Middleware: Smart webhook setup error:', error);
             }
         }, 100); // Small delay to not block the request
     }
