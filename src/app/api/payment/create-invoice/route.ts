@@ -66,6 +66,15 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // For development/testing - create a mock invoice link if no bot token or in test mode
+        const isDevelopment = process.env.NODE_ENV === 'development' || !botToken.includes(':');
+
+        if (isDevelopment) {
+            console.log('Development mode: Creating mock invoice link');
+            const mockInvoiceLink = `https://t.me/invoice/${paymentId}`;
+            return NextResponse.json({ invoiceLink: mockInvoiceLink, paymentId });
+        }
+
         // Create invoice using Telegram Bot API
         const invoicePayload = {
             title: product.name,
@@ -76,7 +85,15 @@ export async function POST(request: NextRequest) {
         };
 
         try {
-            const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/createInvoiceLink`, {
+            console.log('Creating invoice with payload:', JSON.stringify(invoicePayload, null, 2));
+            console.log('Using bot token ending with:', botToken.slice(-8));
+
+            // Use the correct API URL based on environment
+            const { getTelegramApiUrl } = await import('@/lib/test-environment');
+            const apiUrl = getTelegramApiUrl(botToken);
+            console.log('Using Telegram API URL:', `${apiUrl}/createInvoiceLink`);
+
+            const telegramResponse = await fetch(`${apiUrl}/createInvoiceLink`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -88,8 +105,20 @@ export async function POST(request: NextRequest) {
 
             if (!telegramData.ok) {
                 console.error('Telegram API error:', telegramData);
+
+                // Provide more specific error messages
+                if (telegramData.error_code === 401) {
+                    return NextResponse.json(
+                        {
+                            error: 'Bot token is invalid or bot not configured for payments. Please ensure:\n1. Bot token is correct\n2. Bot is configured for payments via @BotFather\n3. Bot has proper permissions for Telegram Stars',
+                            details: telegramData.description
+                        },
+                        { status: 500 }
+                    );
+                }
+
                 return NextResponse.json(
-                    { error: 'Failed to create invoice with Telegram' },
+                    { error: `Telegram API error: ${telegramData.description || 'Unknown error'}` },
                     { status: 500 }
                 );
             }
