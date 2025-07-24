@@ -170,6 +170,28 @@ export default function Home() {
                     <p>• Built with Next.js and Telegram Mini Apps</p>
                 </div>
             </div>
+
+            {/* Debug Information */}
+            <div className="bg-telegram-secondary-bg rounded-lg p-6 space-y-3">
+                <h4 className="font-medium text-telegram-text">Developer Tools</h4>
+                <div className="space-y-3">
+                    <p className="text-sm text-telegram-hint">
+                        Debug bot configuration and payment setup
+                    </p>
+                    <a
+                        href="/debug"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-telegram-button text-telegram-button-text rounded-lg hover:opacity-90 transition-opacity"
+                    >
+                        <span>🔧</span>
+                        <span>Open Debug Page</span>
+                    </a>
+                    <p className="text-xs text-telegram-hint">
+                        View bot status, test payments, and troubleshoot issues
+                    </p>
+                </div>
+            </div>
         </div>
     );
 
