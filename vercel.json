@@ -1,0 +1,11 @@
+{
+    "buildCommand": "pnpm run build",
+    "functions": {
+        "src/app/api/**/*.ts": {
+            "maxDuration": 30
+        }
+    },
+    "env": {
+        "TELEGRAM_BOT_TOKEN": "@telegram_bot_token"
+    }
+}
