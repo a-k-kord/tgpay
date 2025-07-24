@@ -1,31 +1,30 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createValidatedBot } from '@/lib/test-environment';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         const bot = createValidatedBot();
-        
+
         // Test basic bot functionality
         const me = await bot.api.getMe();
-        
+
         // Test if we can create a simple invoice link (this will fail if payments aren't configured)
-        const testInvoice = {
-            title: "Test Payment",
-            description: "Test description",
-            payload: JSON.stringify({ test: true }),
-            currency: "XTR",
-            prices: [{ label: "Test", amount: 1 }]
-        };
-        
         let invoiceResult = null;
         let invoiceError = null;
-        
+
         try {
-            invoiceResult = await bot.api.createInvoiceLink(testInvoice);
+            invoiceResult = await bot.api.createInvoiceLink(
+                "Test Payment",
+                "Test description",
+                JSON.stringify({ test: true }),
+                "", // provider_token (empty for Stars)
+                "XTR",
+                [{ label: "Test", amount: 1 }]
+            );
         } catch (error) {
             invoiceError = error instanceof Error ? error.message : 'Unknown error';
         }
-        
+
         return NextResponse.json({
             success: true,
             bot: {
@@ -44,7 +43,7 @@ export async function GET(request: NextRequest) {
             environment: process.env.NODE_ENV,
             is_test_env: process.env.USE_TEST_ENV
         });
-        
+
     } catch (error) {
         console.error('Debug endpoint error:', error);
         return NextResponse.json({

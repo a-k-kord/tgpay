@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Bot, webhookCallback } from 'grammy';
+import { webhookCallback } from 'grammy';
 import { PaymentData } from '@/features/payment/types';
 import { createValidatedBot } from '@/lib/test-environment';
 
