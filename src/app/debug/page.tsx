@@ -23,9 +23,34 @@ interface DebugInfo {
     error?: string;
 }
 
+interface WebhookInfo {
+    webhookInfo?: {
+        url: string;
+        has_custom_certificate: boolean;
+        pending_update_count: number;
+        ip_address?: string;
+        last_error_date?: number;
+        last_error_message?: string;
+        max_connections?: number;
+        allowed_updates?: string[];
+    };
+    expectedWebhookUrl: string;
+    environment: string;
+    vercelUrl?: string;
+    isWebhookSet: boolean;
+    webhookUrlMatches: boolean;
+    pendingUpdateCount: number;
+    lastErrorDate?: number;
+    lastErrorMessage?: string;
+    maxConnections?: number;
+}
+
 export default function DebugPage() {
     const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+    const [webhookInfo, setWebhookInfo] = useState<WebhookInfo | null>(null);
     const [loading, setLoading] = useState(false);
+    const [webhookLoading, setWebhookLoading] = useState(false);
+    const [settingWebhook, setSettingWebhook] = useState(false);
 
     const fetchDebugInfo = async () => {
         setLoading(true);
@@ -43,8 +68,44 @@ export default function DebugPage() {
         }
     };
 
+    const fetchWebhookInfo = async () => {
+        setWebhookLoading(true);
+        try {
+            const response = await fetch('/api/webhook-info');
+            const data = await response.json();
+            setWebhookInfo(data);
+        } catch (error) {
+            console.error('Failed to fetch webhook info:', error);
+        }
+        setWebhookLoading(false);
+    };
+
+    const setWebhook = async () => {
+        setSettingWebhook(true);
+        try {
+            const response = await fetch('/api/set-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Webhook set successfully! The bot should now receive payment updates.');
+                fetchWebhookInfo(); // Refresh webhook info
+            } else {
+                alert(`Failed to set webhook: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to set webhook:', error);
+            alert('Failed to set webhook. Check console for details.');
+        }
+        setSettingWebhook(false);
+    };
+
     useEffect(() => {
         fetchDebugInfo();
+        fetchWebhookInfo();
     }, []);
 
     const botUsername = debugInfo?.bot?.username;
@@ -162,6 +223,91 @@ export default function DebugPage() {
                                 </div>
                             </div>
 
+                            {/* Webhook Info */}
+                            <div className="border rounded-lg p-4 bg-gray-50">
+                                <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                                    Webhook Configuration
+                                    <button
+                                        onClick={fetchWebhookInfo}
+                                        disabled={webhookLoading}
+                                        className="flex items-center gap-1 px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 disabled:opacity-50"
+                                    >
+                                        {webhookLoading ? (
+                                            <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+                                        ) : (
+                                            <RefreshCw size={12} />
+                                        )}
+                                        Refresh
+                                    </button>
+                                    {webhookInfo && !webhookInfo.isWebhookSet && (
+                                        <button
+                                            onClick={setWebhook}
+                                            disabled={settingWebhook}
+                                            className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
+                                        >
+                                            {settingWebhook ? (
+                                                <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+                                            ) : (
+                                                '🔧'
+                                            )}
+                                            Set Webhook
+                                        </button>
+                                    )}
+                                </h2>
+                                {webhookInfo ? (
+                                    <div className="space-y-3 text-sm">
+                                        <div className="flex items-center gap-2">
+                                            {webhookInfo.isWebhookSet ? (
+                                                <CheckCircle size={16} className="text-green-500" />
+                                            ) : (
+                                                <XCircle size={16} className="text-red-500" />
+                                            )}
+                                            <span><strong>Status:</strong> {webhookInfo.isWebhookSet ? 'Set' : 'Not Set'}</span>
+                                        </div>
+
+                                        {webhookInfo.webhookInfo?.url && (
+                                            <div>
+                                                <strong>Current URL:</strong>
+                                                <div className="break-all text-xs mt-1 p-2 bg-gray-100 rounded">
+                                                    {webhookInfo.webhookInfo.url}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div>
+                                            <strong>Expected URL:</strong>
+                                            <div className="break-all text-xs mt-1 p-2 bg-gray-100 rounded">
+                                                {webhookInfo.expectedWebhookUrl}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {webhookInfo.webhookUrlMatches ? (
+                                                <CheckCircle size={16} className="text-green-500" />
+                                            ) : (
+                                                <XCircle size={16} className="text-red-500" />
+                                            )}
+                                            <span><strong>URL Match:</strong> {webhookInfo.webhookUrlMatches ? 'Yes' : 'No'}</span>
+                                        </div>
+
+                                        <div><strong>Pending Updates:</strong> {webhookInfo.pendingUpdateCount}</div>
+
+                                        {webhookInfo.lastErrorMessage && (
+                                            <div className="text-red-600">
+                                                <strong>Last Error:</strong> {webhookInfo.lastErrorMessage}
+                                                {webhookInfo.lastErrorDate && (
+                                                    <div className="text-xs">
+                                                        {new Date(webhookInfo.lastErrorDate * 1000).toLocaleString()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-gray-500">Loading webhook info...</div>
+                                )}
+                            </div>
+
                             {/* Instructions */}
                             <div className="border rounded-lg p-4 bg-yellow-50">
                                 <h2 className="text-lg font-semibold mb-3">Next Steps</h2>
@@ -178,6 +324,7 @@ export default function DebugPage() {
                                                 <li>Check if bot token is valid</li>
                                                 <li>Ensure you&apos;re using the correct environment (test/production)</li>
                                                 <li>Verify bot has necessary permissions</li>
+                                                <li>Check webhook configuration above</li>
                                             </ul>
                                         </div>
                                     )}

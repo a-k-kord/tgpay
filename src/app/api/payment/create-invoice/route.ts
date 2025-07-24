@@ -11,8 +11,13 @@ if (!global.paymentStore) {
 }
 
 export async function POST(request: NextRequest) {
+    const timestamp = new Date().toISOString();
+    console.log(`[${timestamp}] 🛒 Create invoice request received`);
+
     try {
-        const { userId, productId, quantity = 1 } = await request.json();
+        const requestBody = await request.json();
+        const { userId, productId, quantity = 1 } = requestBody;
+        console.log(`[${timestamp}] 📦 Request data:`, { userId, productId, quantity });
 
         // Validate request
         if (!userId || !productId || !quantity) {
@@ -45,6 +50,7 @@ export async function POST(request: NextRequest) {
 
         // Generate unique payment ID
         const paymentId = `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+        console.log(`[${timestamp}] 🆔 Generated payment ID: ${paymentId}`);
 
         // Store payment info
         const payment: PaymentData = {
@@ -56,6 +62,7 @@ export async function POST(request: NextRequest) {
         };
 
         global.paymentStore.set(paymentId, payment);
+        console.log(`[${timestamp}] 💾 Payment stored:`, payment);
 
         // Create proper Telegram Stars invoice
         const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -124,6 +131,7 @@ export async function POST(request: NextRequest) {
             }
 
             const invoiceLink = telegramData.result;
+            console.log(`[${timestamp}] ✅ Invoice created successfully:`, { paymentId, invoiceLink });
             return NextResponse.json({ invoiceLink, paymentId });
 
         } catch (telegramError) {
