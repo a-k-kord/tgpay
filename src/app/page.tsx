@@ -5,15 +5,64 @@ import { ProductCard } from '../components/ProductCard';
 import { PaymentHistory } from '../features/payment/components/PaymentHistory';
 import { useTelegram } from '../providers/TelegramProvider';
 import { products, categories, getProductsByCategory } from '../data/products';
-import { ShoppingBag, History, User, Star, Filter } from 'lucide-react';
+import { ShoppingBag, History, User, Star, Filter, RefreshCw, CheckCircle, XCircle, ExternalLink } from 'lucide-react';
 
 type TabType = 'shop' | 'history' | 'profile';
+
+interface DebugInfo {
+    success: boolean;
+    bot?: {
+        id: number;
+        username: string;
+        first_name: string;
+        can_join_groups: boolean;
+        can_read_all_group_messages: boolean;
+        supports_inline_queries: boolean;
+    };
+    invoice_test?: {
+        success: boolean;
+        result?: string;
+        error?: string;
+    };
+    environment?: string;
+    is_test_env?: string;
+    error?: string;
+}
+
+interface WebhookInfo {
+    webhookInfo?: {
+        url: string;
+        has_custom_certificate: boolean;
+        pending_update_count: number;
+        ip_address?: string;
+        last_error_date?: number;
+        last_error_message?: string;
+        max_connections?: number;
+        allowed_updates?: string[];
+    };
+    expectedWebhookUrl: string;
+    environment: string;
+    vercelUrl?: string;
+    isWebhookSet: boolean;
+    webhookUrlMatches: boolean;
+    pendingUpdateCount: number;
+    lastErrorDate?: number;
+    lastErrorMessage?: string;
+    maxConnections?: number;
+}
 
 export default function Home() {
     const { webApp, user, isReady } = useTelegram();
     const [activeTab, setActiveTab] = useState<TabType>('shop');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [filteredProducts, setFilteredProducts] = useState(products);
+
+    // Debug state
+    const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
+    const [webhookInfo, setWebhookInfo] = useState<WebhookInfo | null>(null);
+    const [debugLoading, setDebugLoading] = useState(false);
+    const [webhookLoading, setWebhookLoading] = useState(false);
+    const [settingWebhook, setSettingWebhook] = useState(false);
 
     useEffect(() => {
         if (webApp) {
@@ -40,6 +89,64 @@ export default function Home() {
         setActiveTab(tab);
         // Provide haptic feedback
         webApp?.HapticFeedback?.selectionChanged();
+
+        // Load debug info when switching to profile tab
+        if (tab === 'profile' && !debugInfo) {
+            fetchDebugInfo();
+            fetchWebhookInfo();
+        }
+    };
+
+    // Debug functions
+    const fetchDebugInfo = async () => {
+        setDebugLoading(true);
+        try {
+            const response = await fetch('/api/debug');
+            const data = await response.json();
+            setDebugInfo(data);
+        } catch {
+            setDebugInfo({
+                success: false,
+                error: 'Failed to fetch debug info'
+            });
+        } finally {
+            setDebugLoading(false);
+        }
+    };
+
+    const fetchWebhookInfo = async () => {
+        setWebhookLoading(true);
+        try {
+            const response = await fetch('/api/webhook-info');
+            const data = await response.json();
+            setWebhookInfo(data);
+        } catch (error) {
+            console.error('Failed to fetch webhook info:', error);
+        }
+        setWebhookLoading(false);
+    };
+
+    const setWebhook = async () => {
+        setSettingWebhook(true);
+        try {
+            const response = await fetch('/api/set-webhook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({})
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Webhook set successfully! The bot should now receive payment updates.');
+                fetchWebhookInfo(); // Refresh webhook info
+            } else {
+                alert(`Failed to set webhook: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('Failed to set webhook:', error);
+            alert('Failed to set webhook. Check console for details.');
+        }
+        setSettingWebhook(false);
     };
 
     const renderShopTab = () => (
@@ -171,25 +278,244 @@ export default function Home() {
                 </div>
             </div>
 
-            {/* Debug Information */}
-            <div className="bg-telegram-secondary-bg rounded-lg p-6 space-y-3">
-                <h4 className="font-medium text-telegram-text">Developer Tools</h4>
-                <div className="space-y-3">
-                    <p className="text-sm text-telegram-hint">
-                        Debug bot configuration and payment setup
-                    </p>
-                    <a
-                        href="/debug"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-telegram-button text-telegram-button-text rounded-lg hover:opacity-90 transition-opacity"
+            {/* Bot Debug Info */}
+            <div className="bg-telegram-secondary-bg rounded-lg p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-telegram-text">Bot Debug Info</h4>
+                    <button
+                        onClick={fetchDebugInfo}
+                        disabled={debugLoading}
+                        className="flex items-center gap-1 px-3 py-1 bg-telegram-button text-telegram-button-text text-xs rounded hover:opacity-90 disabled:opacity-50"
                     >
-                        <span>🔧</span>
-                        <span>Open Debug Page</span>
-                    </a>
-                    <p className="text-xs text-telegram-hint">
-                        View bot status, test payments, and troubleshoot issues
-                    </p>
+                        {debugLoading ? (
+                            <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+                        ) : (
+                            <RefreshCw size={12} />
+                        )}
+                        Refresh
+                    </button>
+                </div>
+
+                {debugInfo ? (
+                    <div className="space-y-4">
+                        {/* Bot Configuration */}
+                        <div className="border border-telegram-section-separator rounded-lg p-4">
+                            <h5 className="text-sm font-semibold text-telegram-text mb-3 flex items-center gap-2">
+                                Bot Configuration
+                                {debugInfo.success ? (
+                                    <CheckCircle size={16} className="text-green-500" />
+                                ) : (
+                                    <XCircle size={16} className="text-red-500" />
+                                )}
+                            </h5>
+                            {debugInfo.bot ? (
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between">
+                                        <span className="text-telegram-hint">ID:</span>
+                                        <span className="text-telegram-text">{debugInfo.bot.id}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-telegram-hint">Username:</span>
+                                        <span className="text-telegram-text">@{debugInfo.bot.username}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-telegram-hint">Name:</span>
+                                        <span className="text-telegram-text">{debugInfo.bot.first_name}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-telegram-hint">Groups:</span>
+                                        <span className="text-telegram-text">{debugInfo.bot.can_join_groups ? 'Yes' : 'No'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-telegram-hint">Inline:</span>
+                                        <span className="text-telegram-text">{debugInfo.bot.supports_inline_queries ? 'Yes' : 'No'}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-red-600 text-xs">{debugInfo.error}</div>
+                            )}
+
+                            {debugInfo.bot?.username && (
+                                <div className="mt-3 pt-3 border-t border-telegram-section-separator">
+                                    <a
+                                        href={`https://t.me/${debugInfo.bot.username}`}
+                                        className="inline-flex items-center gap-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600 transition-colors"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <span>Open @{debugInfo.bot.username}</span>
+                                        <ExternalLink size={10} />
+                                    </a>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Payment Test */}
+                        <div className="border border-telegram-section-separator rounded-lg p-4">
+                            <h5 className="text-sm font-semibold text-telegram-text mb-3 flex items-center gap-2">
+                                Stars Payment Test
+                                {debugInfo.invoice_test?.success ? (
+                                    <CheckCircle size={16} className="text-green-500" />
+                                ) : (
+                                    <XCircle size={16} className="text-red-500" />
+                                )}
+                            </h5>
+                            {debugInfo.invoice_test ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2 text-xs">
+                                        <span className="text-telegram-hint">Status:</span>
+                                        <span className={debugInfo.invoice_test.success ? 'text-green-600' : 'text-red-600'}>
+                                            {debugInfo.invoice_test.success ? 'Working ✅' : 'Failed ❌'}
+                                        </span>
+                                    </div>
+                                    {debugInfo.invoice_test.success && debugInfo.invoice_test.result && (
+                                        <div className="text-xs">
+                                            <span className="text-telegram-hint">Invoice Link:</span>
+                                            <div className="break-all p-2 bg-gray-100 rounded mt-1 text-gray-700">
+                                                {debugInfo.invoice_test.result}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {debugInfo.invoice_test.error && (
+                                        <div className="text-red-600 text-xs">{debugInfo.invoice_test.error}</div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="text-gray-500 text-xs">No payment test data</div>
+                            )}
+                        </div>
+
+                        {/* Environment Info */}
+                        <div className="border border-telegram-section-separator rounded-lg p-4">
+                            <h5 className="text-sm font-semibold text-telegram-text mb-3">Environment</h5>
+                            <div className="space-y-2 text-xs">
+                                <div className="flex justify-between">
+                                    <span className="text-telegram-hint">Mode:</span>
+                                    <span className="text-telegram-text">{debugInfo.environment}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span className="text-telegram-hint">Test Environment:</span>
+                                    <span className="text-telegram-text">{debugInfo.is_test_env || 'false'}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="text-telegram-hint text-sm">Click Refresh to load debug information</div>
+                )}
+            </div>
+
+            {/* Webhook Configuration */}
+            <div className="bg-telegram-secondary-bg rounded-lg p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                    <h4 className="font-medium text-telegram-text">Webhook Configuration</h4>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={fetchWebhookInfo}
+                            disabled={webhookLoading}
+                            className="flex items-center gap-1 px-3 py-1 bg-telegram-button text-telegram-button-text text-xs rounded hover:opacity-90 disabled:opacity-50"
+                        >
+                            {webhookLoading ? (
+                                <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+                            ) : (
+                                <RefreshCw size={12} />
+                            )}
+                            Refresh
+                        </button>
+                        {webhookInfo && !webhookInfo.isWebhookSet && (
+                            <button
+                                onClick={setWebhook}
+                                disabled={settingWebhook}
+                                className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600 disabled:opacity-50"
+                            >
+                                {settingWebhook ? (
+                                    <div className="animate-spin h-3 w-3 border border-current border-t-transparent rounded-full" />
+                                ) : (
+                                    '🔧'
+                                )}
+                                Set Webhook
+                            </button>
+                        )}
+                    </div>
+                </div>
+
+                {webhookInfo ? (
+                    <div className="space-y-3 text-xs">
+                        <div className="flex items-center gap-2">
+                            {webhookInfo.isWebhookSet ? (
+                                <CheckCircle size={16} className="text-green-500" />
+                            ) : (
+                                <XCircle size={16} className="text-red-500" />
+                            )}
+                            <span className="text-telegram-text"><strong>Status:</strong> {webhookInfo.isWebhookSet ? 'Set' : 'Not Set'}</span>
+                        </div>
+
+                        {webhookInfo.webhookInfo?.url && (
+                            <div>
+                                <strong className="text-telegram-text">Current URL:</strong>
+                                <div className="break-all mt-1 p-2 bg-gray-100 rounded text-gray-700">
+                                    {webhookInfo.webhookInfo.url}
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <strong className="text-telegram-text">Expected URL:</strong>
+                            <div className="break-all mt-1 p-2 bg-gray-100 rounded text-gray-700">
+                                {webhookInfo.expectedWebhookUrl}
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {webhookInfo.webhookUrlMatches ? (
+                                <CheckCircle size={16} className="text-green-500" />
+                            ) : (
+                                <XCircle size={16} className="text-red-500" />
+                            )}
+                            <span className="text-telegram-text"><strong>URL Match:</strong> {webhookInfo.webhookUrlMatches ? 'Yes' : 'No'}</span>
+                        </div>
+
+                        <div className="flex justify-between">
+                            <span className="text-telegram-hint">Pending Updates:</span>
+                            <span className="text-telegram-text">{webhookInfo.pendingUpdateCount}</span>
+                        </div>
+
+                        {webhookInfo.lastErrorMessage && (
+                            <div className="text-red-600">
+                                <strong>Last Error:</strong> {webhookInfo.lastErrorMessage}
+                                {webhookInfo.lastErrorDate && (
+                                    <div className="text-xs">
+                                        {new Date(webhookInfo.lastErrorDate * 1000).toLocaleString()}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="text-telegram-hint text-sm">Click Refresh to load webhook information</div>
+                )}
+            </div>
+
+            {/* Next Steps */}
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h4 className="font-medium text-yellow-800 mb-2">Debug Status</h4>
+                <div className="text-sm text-yellow-700">
+                    {debugInfo?.invoice_test?.success ? (
+                        <div>
+                            ✅ Bot is configured correctly for Stars payments!<br />
+                            You can now test payments in the Mini App.
+                        </div>
+                    ) : (
+                        <div>
+                            <p>❌ Bot payment setup needs attention:</p>
+                            <ul className="list-disc list-inside mt-2 space-y-1 text-xs">
+                                <li>Check if bot token is valid</li>
+                                <li>Ensure you&apos;re using the correct environment (test/production)</li>
+                                <li>Verify bot has necessary permissions</li>
+                                <li>Check webhook configuration above</li>
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
