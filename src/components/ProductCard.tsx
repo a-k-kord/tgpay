@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { Product } from '../features/payment/types';
 import { PaymentButton } from '../features/payment/components/PaymentButton';
-import { Star, Package, CheckCircle } from 'lucide-react';
+import { usePayment } from '../features/payment/hooks/usePayment';
+import { Star, Package, CheckCircle, RefreshCw } from 'lucide-react';
 
 interface ProductCardProps {
   product: Product;
@@ -12,14 +13,40 @@ interface ProductCardProps {
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [quantity, setQuantity] = useState(1);
+  const [lastPaymentId, setLastPaymentId] = useState<string | null>(null);
+  const [isRefunding, setIsRefunding] = useState(false);
+  
+  const { requestRefund } = usePayment();
 
-  const handlePaymentSuccess = () => {
+  const handlePaymentSuccess = (paymentId?: string) => {
     setShowSuccess(true);
-    setTimeout(() => setShowSuccess(false), 3000);
+    setLastPaymentId(paymentId || null);
+    setTimeout(() => setShowSuccess(false), 10000); // Show longer for refund option
   };
 
   const handlePaymentError = (error: string) => {
     console.error('Payment error:', error);
+  };
+
+  const handleRefund = async () => {
+    if (!lastPaymentId) return;
+    
+    try {
+      setIsRefunding(true);
+      const result = await requestRefund(lastPaymentId);
+      
+      if (result.success) {
+        setShowSuccess(false);
+        setLastPaymentId(null);
+        // Show refund success message
+        alert('Refund processed successfully!');
+      }
+    } catch (error) {
+      console.error('Refund error:', error);
+      alert('Refund failed. Please try again.');
+    } finally {
+      setIsRefunding(false);
+    }
   };
 
   return (
@@ -96,12 +123,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* Success Message */}
         {showSuccess && (
           <div className="mb-4 p-3 bg-green-100 border border-green-300 rounded-lg">
-            <div className="flex items-center gap-2 text-green-800">
-              <CheckCircle size={20} />
-              <span className="font-medium">Payment Successful!</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-green-800">
+                <CheckCircle size={20} />
+                <span className="font-medium">Payment Successful!</span>
+              </div>
+              {lastPaymentId && (
+                <button
+                  onClick={handleRefund}
+                  disabled={isRefunding}
+                  className="flex items-center gap-1 px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isRefunding ? (
+                    <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full" />
+                  ) : (
+                    <RefreshCw size={14} />
+                  )}
+                  {isRefunding ? 'Refunding...' : 'Refund'}
+                </button>
+              )}
             </div>
             <p className="text-green-700 text-sm mt-1">
               Thank you for your purchase. You can access your digital content now.
+              {lastPaymentId && ' Click "Refund" if you need to cancel this purchase.'}
             </p>
           </div>
         )}

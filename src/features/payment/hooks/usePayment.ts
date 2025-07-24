@@ -42,7 +42,7 @@ export const usePayment = () => {
 
     const processPayment = useCallback(async (
         request: PaymentRequest,
-        onSuccess?: () => void,
+        onSuccess?: (paymentId?: string) => void,
         onError?: (error: string) => void
     ) => {
         if (!window.Telegram?.WebApp) {
@@ -57,14 +57,14 @@ export const usePayment = () => {
 
         try {
             // Create invoice via our API
-            const { invoiceLink } = await paymentAPI.createInvoice(request);
+            const { invoiceLink, paymentId } = await paymentAPI.createInvoice(request);
 
             // Open payment interface using Telegram WebApp SDK
             window.Telegram.WebApp.openInvoice(invoiceLink, (status: string) => {
                 if (status === 'paid') {
                     // Provide haptic feedback
                     window.Telegram?.WebApp.HapticFeedback?.notificationOccurred('success');
-                    onSuccess?.();
+                    onSuccess?.(paymentId);
                 } else if (status === 'cancelled') {
                     setError('Payment was cancelled');
                     onError?.('Payment was cancelled');

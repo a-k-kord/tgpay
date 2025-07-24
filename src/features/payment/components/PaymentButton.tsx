@@ -9,7 +9,7 @@ interface PaymentButtonProps {
   product: Product;
   quantity?: number;
   className?: string;
-  onPaymentSuccess?: () => void;
+  onPaymentSuccess?: (paymentId?: string) => void;
   onPaymentError?: (error: string) => void;
 }
 
